@@ -1,12 +1,12 @@
 # Playwright-computer-use
 
-In `computer.py` is defined a `PlaywrightComputerTool`. Such tool is an Anthropic computer use tool, that is made to interact with an `async` playwright page.
+In `computer.py` is defined a `PlaywrightToolbox`. Such tool is an Anthropic computer use tool, that is made to interact with an `async` playwright page. Plus another couple of tools to use the navigation bar and going back to the previous page.
 
 ## Demo
 
 An example of an agent using this tool is implemented in `loop.py`.
 
-An example of usage of the agent defined in `loop.py` can be found in `test.py`.
+An example of usage of the agent defined in `loop.py` can be found in `demo.py`.
 
 To run it:
 * install requirements `pip install -r requirements` (virtual environment recommended)
