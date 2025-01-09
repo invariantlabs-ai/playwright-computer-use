@@ -3,7 +3,6 @@ from playwright.async_api import async_playwright, Playwright
 from loop import sampling_loop, anthropic_to_invariant
 from computer import PlaywrightToolbox
 from anthropic import Anthropic
-import json
 from invariant_sdk.client import Client as InvariantClient
 from dotenv import load_dotenv
 import sys
