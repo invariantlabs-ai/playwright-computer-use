@@ -1,6 +1,7 @@
 """
 Agentic sampling loop that calls the Anthropic API and local implementation of anthropic-defined computer use tools.
 """
+import sys
 
 from collections.abc import Callable
 from datetime import datetime
@@ -28,7 +29,7 @@ from anthropic.types.beta import (
     BetaToolUseBlockParam,
 )
 
-from computer import PlaywrightComputerTool, ToolResult, ToolError
+from computer import PlaywrightToolbox, ToolResult, ToolError
 
 COMPUTER_USE_BETA_FLAG = "computer-use-2024-10-22"
 PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
@@ -40,7 +41,7 @@ PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
 # environment it is running in, and to provide any additional information that may be
 # helpful for the task at hand.
 SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
-* You are utilising an chrome browser with internet access. The entirity of the task you are given can be solved by navigating from this web page.
+* You are utilising an firefox browser with internet access. The entirity of the task you are given can be solved by navigating from this web page.
 * You cannot set the url manually. You can only navigate within the page.
 * You can only use one page, and you can't open new tabs.
 * When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
@@ -57,7 +58,7 @@ async def sampling_loop(
     system_prompt: str = SYSTEM_PROMPT,
     messages: list[BetaMessageParam],
     page: Page,
-    computer_tool: PlaywrightComputerTool,
+    tools: PlaywrightToolbox,
     output_callback: Callable[[BetaContentBlockParam], None] = None,
     tool_output_callback: Callable[[ToolResult, str], None] = None,
     api_response_callback: Callable[
@@ -113,14 +114,20 @@ async def sampling_loop(
         # implementation may be able call the SDK directly with:
         # `response = client.messages.create(...)` instead.
         try:
+            if verbose:
+                sys.stdout.write("Calling Model")
+                sys.stdout.flush()
             raw_response = anthropic_client.beta.messages.with_raw_response.create(
                 max_tokens=max_tokens,
                 messages=messages,
                 model=model,
                 system=[system],
-                tools=[computer_tool.to_params()],
+                tools=tools.to_params(),
                 betas=betas,
             )
+            if verbose:
+                sys.stdout.write("\r\033[K")  # Move to the beginning of the line and clear it
+                sys.stdout.flush()
         except (APIStatusError, APIResponseValidationError) as e:
             raise e
         except APIError as e:
@@ -149,16 +156,13 @@ async def sampling_loop(
             if content_block["type"] == "tool_use":
                 if verbose:
                     print(f'tool call > {content_block["name"]} {content_block["input"]}')
-                if content_block["name"] != computer_tool.name:
-                    result = ToolError(message=f"Unknown tool {content_block['name']}, only computer use allowed")
-                else:
-                    result = await computer_tool(**cast(dict[str, Any], content_block["input"]))
+                result = await tools.run_tool(name=content_block["name"], input=content_block["input"])
                 tool_result_content.append(
                     _make_api_tool_result(result, content_block["id"])
                 )
                 if tool_output_callback is not None:
                     tool_output_callback(result, content_block["id"])
-            if content_block["type"] == "text" and verbose:
+            if verbose and content_block["type"] == "text":
                 print(f'assistant > {content_block["text"]}')
 
         if not tool_result_content:

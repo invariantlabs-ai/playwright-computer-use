@@ -4,7 +4,7 @@ from typing import Literal, TypedDict
 from playwright.async_api import Page
 from PIL import Image
 import io
-from anthropic.types.beta import BetaToolComputerUse20241022Param
+from anthropic.types.beta import BetaToolComputerUse20241022Param, BetaToolParam
 from dataclasses import dataclass
 
 TYPING_GROUP_SIZE = 50
@@ -56,6 +56,73 @@ class ToolError(Exception):
         self.message = message
 
 
+class PlaywrightToolbox:
+    def __init__(self, page: Page):
+        self.page = page
+        self.tools = [
+            PlaywrightComputerTool(page),
+            PlaywrightSetURLTool(page),
+            PlaywrightBackTool(page),
+        ]
+    def to_params(self) -> list[BetaToolParam]:
+        return [tool.to_params() for tool in self.tools]
+
+    async def run_tool(self, name: str, input: dict):
+        if name not in [tool.name for tool in self.tools]:
+            return ToolError(message=f"Unknown tool {name}, only computer use allowed")
+        tool = next(tool for tool in self.tools if tool.name == name)
+        return await tool(**input)
+
+
+class PlaywrightSetURLTool:
+    name: Literal["set_url"] = "set_url"
+
+    def __init__(self, page: Page):
+        super().__init__()
+        self.page = page
+
+    def to_params(self) -> BetaToolParam:
+        return BetaToolParam(
+            name=self.name,
+            description="This tool allows to go directly to a specified URL.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "URL of the web page to navigate to.",
+                    }
+                },
+                "required": ["url"],
+            }
+        )
+    async def __call__(self, *, url: str):
+        try:
+            await self.page.goto(url)
+            return ToolResult()
+        except Exception as e:
+            return ToolResult(error=str(e))
+
+class PlaywrightBackTool:
+    name: Literal["previous_page"] = "previous_page"
+
+    def __init__(self, page: Page):
+        super().__init__()
+        self.page = page
+
+    def to_params(self) -> BetaToolParam:
+        return BetaToolParam(
+            name=self.name,
+            description="This tool navigate to the previous page.",
+            input_schema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        )
+
+    async def __call__(self):
+        await self.page.go_back()
 
 class PlaywrightComputerTool:
     """

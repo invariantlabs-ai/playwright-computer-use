@@ -1,7 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright, Playwright
 from loop import sampling_loop, anthropic_to_invariant
-from computer import PlaywrightComputerTool
+from computer import PlaywrightToolbox
 from anthropic import Anthropic
 import json
 from invariant_sdk.client import Client as InvariantClient
@@ -17,12 +17,12 @@ async def run(playwright: Playwright, prompt: str):
     context = await browser.new_context()
     page = await context.new_page()
     await page.goto("https://www.google.com")
-    computer_tool = PlaywrightComputerTool(page)
+    playwright_tools = PlaywrightToolbox(page)
     messages = await sampling_loop(
         model="claude-3-5-sonnet-20241022",
         anthropic_client=anthropic_client,
         messages=[{"role": "user", "content": prompt}],
-        computer_tool=computer_tool,
+        tools=playwright_tools,
         page=page,
         verbose=True
     )
