@@ -57,10 +57,10 @@ class ToolError(Exception):
 
 
 class PlaywrightToolbox:
-    def __init__(self, page: Page):
+    def __init__(self, page: Page, use_cursor: bool = True):
         self.page = page
         self.tools = [
-            PlaywrightComputerTool(page),
+            PlaywrightComputerTool(page, use_cursor=use_cursor),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
         ]
@@ -153,9 +153,11 @@ class PlaywrightComputerTool:
     def to_params(self) -> BetaToolComputerUse20241022Param:
         return {"name": self.name, "type": self.api_type, **self.options}
 
-    def __init__(self, page: Page):
+    def __init__(self, page: Page, use_cursor: bool = True):
         super().__init__()
         self.page = page
+        self.use_cursor = use_cursor
+        self.mouse_position: tuple[int, int] = (0, 0)
 
     async def __call__(
         self,
@@ -235,6 +237,9 @@ class PlaywrightComputerTool:
         screenshot = await self.page.screenshot()
         image = Image.open(io.BytesIO(screenshot))
         img_small = image.resize((self.width, self.height), Image.LANCZOS)
+        if self.use_cursor:
+            cursor = Image.open("cursor.png").convert("RGBA")
+            img_small.paste(cursor, self.mouse_position, cursor)
         buffered = io.BytesIO()
         img_small.save(buffered, format="PNG")
         base64_image = base64.b64encode(buffered.getvalue()).decode()

@@ -17,7 +17,7 @@ async def run(playwright: Playwright, prompt: str):
     context = await browser.new_context()
     page = await context.new_page()
     await page.goto("https://www.google.com")
-    playwright_tools = PlaywrightToolbox(page)
+    playwright_tools = PlaywrightToolbox(page, use_cursor=True)
     messages = await sampling_loop(
         model="claude-3-5-sonnet-20241022",
         anthropic_client=anthropic_client,
