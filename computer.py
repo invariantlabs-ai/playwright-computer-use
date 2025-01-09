@@ -48,7 +48,6 @@ class ToolResult:
     system: str | None = None
 
 
-
 class ToolError(Exception):
     """Raised when a tool encounters an error."""
 
@@ -64,6 +63,7 @@ class PlaywrightToolbox:
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
         ]
+
     def to_params(self) -> list[BetaToolParam]:
         return [tool.to_params() for tool in self.tools]
 
@@ -94,14 +94,16 @@ class PlaywrightSetURLTool:
                     }
                 },
                 "required": ["url"],
-            }
+            },
         )
+
     async def __call__(self, *, url: str):
         try:
             await self.page.goto(url)
             return ToolResult()
         except Exception as e:
             return ToolResult(error=str(e))
+
 
 class PlaywrightBackTool:
     name: Literal["previous_page"] = "previous_page"
@@ -118,11 +120,12 @@ class PlaywrightBackTool:
                 "type": "object",
                 "properties": {},
                 "required": [],
-            }
+            },
         )
 
     async def __call__(self):
         await self.page.go_back()
+
 
 class PlaywrightComputerTool:
     """
@@ -146,9 +149,8 @@ class PlaywrightComputerTool:
         return {
             "display_width_px": self.width,
             "display_height_px": self.height,
-            "display_number": 0, # hardcoded
+            "display_number": 0,  # hardcoded
         }
-
 
     def to_params(self) -> BetaToolComputerUse20241022Param:
         return {"name": self.name, "type": self.api_type, **self.options}
@@ -168,7 +170,7 @@ class PlaywrightComputerTool:
         **kwargs,
     ):
         if action in ("mouse_move", "left_click_drag"):
-            if coordinate is None: 
+            if coordinate is None:
                 raise ToolError(f"coordinate is required for {action}")
             if text is not None:
                 raise ToolError(f"text is not accepted for {action}")
@@ -225,9 +227,11 @@ class PlaywrightComputerTool:
                     "left_click": {"button": "left", "click_count": 1},
                     "right_click": {"button": "right", "click_count": 1},
                     "middle_click": {"button": "middle", "click_count": 1},
-                    "double_click":{"button": "left", "click_count": 2, "delay": 100},
+                    "double_click": {"button": "left", "click_count": 2, "delay": 100},
                 }[action]
-                await self.page.mouse.click(self.mouse_position[0], self.mouse_position[1], **click_arg)
+                await self.page.mouse.click(
+                    self.mouse_position[0], self.mouse_position[1], **click_arg
+                )
                 return ToolResult()
 
         raise ToolError(f"Invalid action: {action}")
@@ -257,11 +261,33 @@ class PlaywrightComputerTool:
         for shift in shifts:
             await self.page.keyboard.up(shift)
 
+
 def to_playwright_key(key: str) -> str:
     """Convert a key to the Playwright key format."""
-    valid_keys = ["F{i}" for i in range(1, 13)] + ["Digit{i}" for i in range(10)] + ["Key{i}" for i in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"] + [
-        "Backquote", "Minus", "Equal", "Backslash", "Backspace", "Tab", "Delete", "Escape", "ArrowDown", "End", "Enter", "Home", "Insert", "PageDown", "PageUp", "ArrowRight", "ArrowUp"
-    ]
+    valid_keys = (
+        ["F{i}" for i in range(1, 13)]
+        + ["Digit{i}" for i in range(10)]
+        + ["Key{i}" for i in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+        + [
+            "Backquote",
+            "Minus",
+            "Equal",
+            "Backslash",
+            "Backspace",
+            "Tab",
+            "Delete",
+            "Escape",
+            "ArrowDown",
+            "End",
+            "Enter",
+            "Home",
+            "Insert",
+            "PageDown",
+            "PageUp",
+            "ArrowRight",
+            "ArrowUp",
+        ]
+    )
     if key in valid_keys:
         return key
     if key == "Return":
