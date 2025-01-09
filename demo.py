@@ -6,12 +6,13 @@ from anthropic import Anthropic
 import json
 from invariant_sdk.client import Client as InvariantClient
 from dotenv import load_dotenv
+import sys
 load_dotenv()
 
 anthropic_client = Anthropic()
 invariant_client = InvariantClient()
 
-async def run(playwright: Playwright):
+async def run(playwright: Playwright, prompt: str):
     browser = await playwright.firefox.launch(headless=False)
     context = await browser.new_context()
     page = await context.new_page()
@@ -20,18 +21,21 @@ async def run(playwright: Playwright):
     messages = await sampling_loop(
         model="claude-3-5-sonnet-20241022",
         anthropic_client=anthropic_client,
-        messages=[{"role": "user", "content": "How long does it take by car to go from zurich to munich?"}],
+        messages=[{"role": "user", "content": prompt}],
         computer_tool=computer_tool,
         page=page,
     )
-    json.dump(anthropic_to_invariant(messages), open("messages.json", "w"))
+    print(messages[-1])
     _ = invariant_client.create_request_and_push_trace(
         messages=[anthropic_to_invariant(messages)],
         dataset="playwright_computer_use_trace"
     )
     await browser.close()
+
+prompt = sys.argv[1]
 async def main():
     async with async_playwright() as playwright:
-        await run(playwright)
+        await run(playwright, prompt)
+
 
 asyncio.run(main())
