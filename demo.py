@@ -24,12 +24,15 @@ async def run(playwright: Playwright, prompt: str):
         messages=[{"role": "user", "content": prompt}],
         computer_tool=computer_tool,
         page=page,
+        verbose=True
     )
-    print(messages[-1])
-    _ = invariant_client.create_request_and_push_trace(
+    print(messages[-1]["content"][0]["text"])
+    response = invariant_client.create_request_and_push_trace(
         messages=[anthropic_to_invariant(messages)],
         dataset="playwright_computer_use_trace"
     )
+    url = f"{invariant_client.api_url}/trace/{response.id[0]}"
+    print(f"View the trace at {url}")
     await browser.close()
 
 prompt = sys.argv[1]

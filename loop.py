@@ -66,6 +66,7 @@ async def sampling_loop(
     only_n_most_recent_images: int | None = None,
     max_tokens: int = 4096,
     enable_prompt_caching: bool = True,
+    verbose: bool = False,
 ):
     """
     Agentic sampling loop for the assistant/tool interaction of computer use.
@@ -76,7 +77,16 @@ async def sampling_loop(
         type="text",
         text=system_prompt,
     )
-
+    if verbose:
+        for message in messages:
+            if message["role"] == "user":
+                print(f'user > {message["content"]}')
+            if message["role"] == "assistant":
+                for content_block in message["content"]:
+                    if content_block["type"] == "text":
+                        print(f'assistant > {content_block["text"]}')
+                    if message["role"] == "tool":
+                        print(f'tool call > {content_block["name"]} {content_block["input"]}')
     while True:
         enable_prompt_caching = False
         betas = [COMPUTER_USE_BETA_FLAG]
@@ -137,6 +147,8 @@ async def sampling_loop(
             if output_callback is not None:
                 output_callback(content_block)
             if content_block["type"] == "tool_use":
+                if verbose:
+                    print(f'tool call > {content_block["name"]} {content_block["input"]}')
                 if content_block["name"] != computer_tool.name:
                     result = ToolError(message=f"Unknown tool {content_block['name']}, only computer use allowed")
                 else:
@@ -146,6 +158,8 @@ async def sampling_loop(
                 )
                 if tool_output_callback is not None:
                     tool_output_callback(result, content_block["id"])
+            if content_block["type"] == "text" and verbose:
+                print(f'assistant > {content_block["text"]}')
 
         if not tool_result_content:
             return [{"role": "system", "content": system_prompt}] + messages

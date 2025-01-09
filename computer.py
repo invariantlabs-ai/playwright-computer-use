@@ -126,7 +126,8 @@ class PlaywrightComputerTool:
                 raise ToolError(output=f"{text} must be a string")
 
             if action == "key":
-                await self.page.keyboard.press(to_playwright_key(text))
+                # hande shifts
+                await self.press_key(text)
                 return ToolResult()
             elif action == "type":
                 for chunk in chunks(text, TYPING_GROUP_SIZE):
@@ -171,7 +172,18 @@ class PlaywrightComputerTool:
         img_small.save(buffered, format="PNG")
         base64_image = base64.b64encode(buffered.getvalue()).decode()
         return ToolResult(base64_image=base64_image)
-    
+
+    async def press_key(self, key: str):
+        """Press a key on the keyboard. Handle + shifts. Eg: Ctrl+Shift+T"""
+        shifts = []
+        if "+" in key:
+            key = key.split("+")[-1]
+            shifts += key.split("+")[:-1]
+        for shift in shifts:
+            await self.page.keyboard.down(shift)
+        await self.page.keyboard.press(to_playwright_key(key))
+        for shift in shifts:
+            await self.page.keyboard.up(shift)
 
 def to_playwright_key(key: str) -> str:
     """Convert a key to the Playwright key format."""
@@ -186,4 +198,5 @@ def to_playwright_key(key: str) -> str:
         return "PageDown"
     if key == "Page_Up":
         return "PageUp"
-    raise ValueError(f"Key {key} is not properly mapped into playwright")
+    print(f"Key {key} is not properly mapped into playwright")
+    return key
