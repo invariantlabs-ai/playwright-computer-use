@@ -296,5 +296,15 @@ def to_playwright_key(key: str) -> str:
         return "PageDown"
     if key == "Page_Up":
         return "PageUp"
+    if key == "Left":
+        return "ArrowLeft"
+    if key == "Right":
+        return "ArrowRight"
+    if key == "Up":
+        return "ArrowUp"
+    if key == "Down":
+        return "ArrowDown"
+    if key == "BackSpace":
+        return "Backspace"
     print(f"Key {key} is not properly mapped into playwright")
     return key

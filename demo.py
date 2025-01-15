@@ -1,11 +1,10 @@
 import asyncio
 from playwright.async_api import async_playwright, Playwright
 from loop import sampling_loop, anthropic_to_invariant
-from computer import PlaywrightToolbox
+from computer_async import PlaywrightToolbox
 from anthropic import Anthropic
 from invariant_sdk.client import Client as InvariantClient
 from dotenv import load_dotenv
-import sys
 import os
 
 load_dotenv()
@@ -43,7 +42,7 @@ async def run(playwright: Playwright, prompt: str):
     await browser.close()
 
 
-prompt = sys.argv[1]
+prompt = "How long does it take by car to go from zurich to munich? Use openstreetmap, I don't like google"
 
 
 async def main():
