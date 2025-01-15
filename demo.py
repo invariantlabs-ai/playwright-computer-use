@@ -32,6 +32,7 @@ async def run(playwright: Playwright, prompt: str):
         tools=playwright_tools,
         page=page,
         verbose=True,
+        only_n_most_recent_images=10,
     )
     print(messages[-1]["content"][0]["text"])
     if invariant_client is not None:
