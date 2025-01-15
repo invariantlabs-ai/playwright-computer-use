@@ -67,7 +67,9 @@ class PlaywrightToolbox:
             use_cursor: Whether to display the cursor in the screenshots or not.
         """
         self.page = page
-        self.tools = [
+        self.tools: list[
+            PlaywrightComputerTool | PlaywrightSetURLTool | PlaywrightBackTool
+        ] = [
             PlaywrightComputerTool(page, use_cursor=use_cursor),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
