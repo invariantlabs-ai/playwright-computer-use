@@ -1,19 +1,19 @@
 # Playwright-computer-use
 
-In `computer.py` is defined a `PlaywrightToolbox`. Such tool is an Anthropic computer use tool, that is made to interact with an `async` playwright page. Plus another couple of tools to use the navigation bar and going back to the previous page.
+This Repo contains a Claude computer use tool that interacts with Playwright.
 
 ## Demo
 
-An example of an agent using this tool is implemented in `loop.py`.
-
-An example of usage of the agent defined in `loop.py` can be found in `demo.py`.
-
+Clone the repo
+```
+git clone https://github.com/invariantlabs-ai/playwright-computer-use.git
+```
 To run it:
 * setup a virtual environment and install requirements
 ```
 python -m venv venv
 . venv/bin/activate
-pip install -r requirements
+pip install .
 ```
 * create a `.env` basing on `.env-example`
 * run `python demo.py "How long does it take to travel from Zurich to Milan?"`

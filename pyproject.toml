@@ -1,13 +1,9 @@
 [build-system]
 requires = [
     "setuptools>=61.0",
-    "anthropic",
-    "python-dotenv",
-    "playwright",
-    "Pillow",
-    "invariant-sdk",
-    "python-dotenv",
 ]
+
+
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,7 +20,14 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-
+dependencies = [
+    "anthropic",
+    "python-dotenv",
+    "playwright",
+    "Pillow",
+    "invariant-sdk",
+    "python-dotenv",
+]
 [project.urls]
 Homepage = "https://github.com/invariantlabs-ai/playwright-computer-use"
 Issues = "https://github.com/invariantlabs-ai/playwright-computer-use/issues"
@@ -40,3 +43,6 @@ line-length = 88  # Adjust line length if needed
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.mypy]
+files = "src" 

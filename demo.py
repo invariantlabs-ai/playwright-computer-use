@@ -8,6 +8,7 @@ from anthropic import Anthropic
 from invariant_sdk.client import Client as InvariantClient
 from dotenv import load_dotenv
 import os
+import sys
 
 
 load_dotenv()
@@ -47,7 +48,7 @@ async def run(playwright: Playwright, prompt: str):
     await browser.close()
 
 
-prompt = "How long does it take by car to go from zurich to munich? Use openstreetmap, I don't like google"
+prompt = sys.argv[1] if len(sys.argv) > 1 else "What is the capital of France?"
 
 
 async def main():

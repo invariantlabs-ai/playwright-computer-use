@@ -117,7 +117,11 @@ class PlaywrightBackTool:
 
     def __call__(self):
         """Trigger the back button in the browser."""
-        self.page.go_back()
+        try:
+            self.page.go_back()
+            return ToolResult()
+        except Exception as e:
+            return ToolResult(error=str(e))
 
 
 class PlaywrightComputerTool:
