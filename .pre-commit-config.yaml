@@ -6,5 +6,7 @@ repos:
     # Run the linter.
     - id: ruff
       args: [ --fix ]
+      files: .*\.py$
     # Run the formatter.
     - id: ruff-format
+      files: .*\.py$

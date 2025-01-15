@@ -1,0 +1,8 @@
+[tool.ruff]
+select = ["D", "G"]  # Include docstring rules (D) and Google-style docstring rules (G)
+ignore = []          # List rules to ignore, if any
+extend-ignore = []   # Optionally extend the ignore list
+docstring-convention = "google"  # Enforce Google-style docstrings
+
+# Optionally, specify additional settings for Ruff
+line-length = 88  # Adjust line length if needed
