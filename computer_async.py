@@ -1,3 +1,5 @@
+"""This module contains the PlaywrightToolbox class to be used with an Async Playwright Page."""
+
 import base64
 from enum import StrEnum
 from typing import Literal, TypedDict
@@ -23,18 +25,16 @@ Action = Literal[
 ]
 
 
-class ScalingSource(StrEnum):
-    COMPUTER = "computer"
-    API = "api"
-
-
 class ComputerToolOptions(TypedDict):
+    """Options for the computer tool."""
+
     display_height_px: int
     display_width_px: int
     display_number: int | None
 
 
 def chunks(s: str, chunk_size: int) -> list[str]:
+    """Split a string into chunks of a specific size."""
     return [s[i : i + chunk_size] for i in range(0, len(s), chunk_size)]
 
 
@@ -52,22 +52,35 @@ class ToolError(Exception):
     """Raised when a tool encounters an error."""
 
     def __init__(self, message):
+        """Create a new ToolError."""
         self.message = message
 
 
 class PlaywrightToolbox:
+    """Toolbox for interaction between Claude and Async Playwright Page."""
+
     def __init__(self, page: Page, use_cursor: bool = True):
+        """Create a new PlaywrightToolbox.
+
+        Args:
+            page: The Async Playwright page to interact with.
+            use_cursor: Whether to display the cursor in the screenshots or not.
+        """
         self.page = page
-        self.tools = [
+        self.tools: list[
+            PlaywrightComputerTool | PlaywrightSetURLTool | PlaywrightBackTool
+        ] = [
             PlaywrightComputerTool(page, use_cursor=use_cursor),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
         ]
 
     def to_params(self) -> list[BetaToolParam]:
+        """Expose the params of all the tools in the toolbox."""
         return [tool.to_params() for tool in self.tools]
 
     async def run_tool(self, name: str, input: dict):
+        """Pick the right tool using `name` and run it."""
         if name not in [tool.name for tool in self.tools]:
             return ToolError(message=f"Unknown tool {name}, only computer use allowed")
         tool = next(tool for tool in self.tools if tool.name == name)
@@ -75,13 +88,21 @@ class PlaywrightToolbox:
 
 
 class PlaywrightSetURLTool:
+    """Tool to navigate to a specific URL."""
+
     name: Literal["set_url"] = "set_url"
 
     def __init__(self, page: Page):
+        """Create a new PlaywrightSetURLTool.
+
+        Args:
+            page: The Async Playwright page to interact with.
+        """
         super().__init__()
         self.page = page
 
     def to_params(self) -> BetaToolParam:
+        """Params describing the tool. Description used by Claude to understand how to this use tool."""
         return BetaToolParam(
             name=self.name,
             description="This tool allows to go directly to a specified URL.",
@@ -98,6 +119,7 @@ class PlaywrightSetURLTool:
         )
 
     async def __call__(self, *, url: str):
+        """Trigger goto the chosen url."""
         try:
             await self.page.goto(url)
             return ToolResult()
@@ -106,13 +128,21 @@ class PlaywrightSetURLTool:
 
 
 class PlaywrightBackTool:
+    """Tool to navigate to the previous page."""
+
     name: Literal["previous_page"] = "previous_page"
 
     def __init__(self, page: Page):
+        """Create a new PlaywrightBackTool.
+
+        Args:
+            page: The Async Playwright page to interact with.
+        """
         super().__init__()
         self.page = page
 
     def to_params(self) -> BetaToolParam:
+        """Params describing the tool. Description used by Claude to understand how to this use tool."""
         return BetaToolParam(
             name=self.name,
             description="This tool navigate to the previous page.",
@@ -124,28 +154,29 @@ class PlaywrightBackTool:
         )
 
     async def __call__(self):
+        """Trigger the back button in the browser."""
         await self.page.go_back()
 
 
 class PlaywrightComputerTool:
-    """
-    A tool that allows the agent to interact with the screen, keyboard, and mouse of the current computer.
-    The tool parameters are defined by Anthropic and are not editable.
-    """
+    """A tool that allows the agent to interact with Async Playwright Page."""
 
     name: Literal["computer"] = "computer"
     api_type: Literal["computer_20241022"] = "computer_20241022"
 
     @property
     def width(self) -> int:
+        """The width of the Playwright page in pixels."""
         return self.page.viewport_size["width"]
 
     @property
     def height(self) -> int:
+        """The height of the Playwright page in pixels."""
         return self.page.viewport_size["height"]
 
     @property
     def options(self) -> ComputerToolOptions:
+        """The options of the tool."""
         return {
             "display_width_px": self.width,
             "display_height_px": self.height,
@@ -153,9 +184,16 @@ class PlaywrightComputerTool:
         }
 
     def to_params(self) -> BetaToolComputerUse20241022Param:
+        """Params describing the tool. Used by Claude to understand this is a computer use tool."""
         return {"name": self.name, "type": self.api_type, **self.options}
 
     def __init__(self, page: Page, use_cursor: bool = True):
+        """Initializes the PlaywrightComputerTool.
+
+        Args:
+            page: The Async Playwright page to interact with.
+            use_cursor: Whether to display the cursor in the screenshots or not.
+        """
         super().__init__()
         self.page = page
         self.use_cursor = use_cursor
@@ -169,6 +207,7 @@ class PlaywrightComputerTool:
         coordinate: tuple[int, int] | None = None,
         **kwargs,
     ):
+        """Run an action. text and coordinate are potential additional parameters."""
         if action in ("mouse_move", "left_click_drag"):
             if coordinate is None:
                 raise ToolError(f"coordinate is required for {action}")
@@ -221,7 +260,9 @@ class PlaywrightComputerTool:
             if action == "screenshot":
                 return await self.screenshot()
             elif action == "cursor_position":
-                return ToolResult(output=f"X={self.mouse_position[0]},Y={self.mouse_position[1]}")
+                return ToolResult(
+                    output=f"X={self.mouse_position[0]},Y={self.mouse_position[1]}"
+                )
             else:
                 click_arg = {
                     "left_click": {"button": "left", "click_count": 1},
@@ -250,7 +291,7 @@ class PlaywrightComputerTool:
         return ToolResult(base64_image=base64_image)
 
     async def press_key(self, key: str):
-        """Press a key on the keyboard. Handle + shifts. Eg: Ctrl+Shift+T"""
+        """Press a key on the keyboard. Handle + shifts. Eg: Ctrl+Shift+T."""
         shifts = []
         if "+" in key:
             key = key.split("+")[-1]
@@ -296,5 +337,15 @@ def to_playwright_key(key: str) -> str:
         return "PageDown"
     if key == "Page_Up":
         return "PageUp"
+    if key == "Left":
+        return "ArrowLeft"
+    if key == "Right":
+        return "ArrowRight"
+    if key == "Up":
+        return "ArrowUp"
+    if key == "Down":
+        return "ArrowDown"
+    if key == "BackSpace":
+        return "Backspace"
     print(f"Key {key} is not properly mapped into playwright")
     return key

@@ -9,6 +9,11 @@ An example of an agent using this tool is implemented in `loop.py`.
 An example of usage of the agent defined in `loop.py` can be found in `demo.py`.
 
 To run it:
-* install requirements `pip install -r requirements` (virtual environment recommended)
+* setup a virtual environment and install requirements
+```
+python -m venv venv
+. venv/bin/activate
+pip install -r requirements
+```
 * create a `.env` basing on `.env-example`
 * run `python demo.py "How long does it take to travel from Zurich to Milan?"`

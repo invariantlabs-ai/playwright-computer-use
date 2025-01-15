@@ -1,12 +1,14 @@
+"""Demo of Claude Agent running using Playwright."""
+
 import asyncio
 from playwright.async_api import async_playwright, Playwright
 from loop import sampling_loop, anthropic_to_invariant
-from computer import PlaywrightToolbox
+from computer_async import PlaywrightToolbox
 from anthropic import Anthropic
 from invariant_sdk.client import Client as InvariantClient
 from dotenv import load_dotenv
-import sys
 import os
+
 
 load_dotenv()
 
@@ -15,6 +17,7 @@ invariant_client = InvariantClient() if "INVARIANT_API_KEY" in os.environ else N
 
 
 async def run(playwright: Playwright, prompt: str):
+    """Setup tools and run loop."""
     browser = await playwright.firefox.launch(headless=False)
     context = await browser.new_context()
     page = await context.new_page()
@@ -32,7 +35,8 @@ async def run(playwright: Playwright, prompt: str):
     print(messages[-1]["content"][0]["text"])
     if invariant_client is not None:
         response = invariant_client.create_request_and_push_trace(
-            messages=[anthropic_to_invariant(messages)], dataset="playwright_computer_use_trace"
+            messages=[anthropic_to_invariant(messages)],
+            dataset="playwright_computer_use_trace",
         )
         url = f"{invariant_client.api_url}/trace/{response.id[0]}"
         print(f"View the trace at {url}")
@@ -43,10 +47,11 @@ async def run(playwright: Playwright, prompt: str):
     await browser.close()
 
 
-prompt = sys.argv[1]
+prompt = "How long does it take by car to go from zurich to munich? Use openstreetmap, I don't like google"
 
 
 async def main():
+    """Run the Agent loop."""
     async with async_playwright() as playwright:
         await run(playwright, prompt)
 

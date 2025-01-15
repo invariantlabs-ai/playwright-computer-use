@@ -1,12 +1,11 @@
-"""
-Agentic sampling loop that calls the Anthropic API and local implementation of anthropic-defined computer use tools.
-"""
+"""Agentic sampling loop that calls the Anthropic API and local implementation of anthropic-defined computer use tools."""
 
 import sys
 
 from collections.abc import Callable
 from datetime import datetime
 from typing import cast
+
 
 import httpx
 from anthropic import (
@@ -30,7 +29,7 @@ from anthropic.types.beta import (
     BetaToolUseBlockParam,
 )
 
-from computer import PlaywrightToolbox, ToolResult
+from computer_async import PlaywrightToolbox, ToolResult
 
 COMPUTER_USE_BETA_FLAG = "computer-use-2024-10-22"
 PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
@@ -70,9 +69,7 @@ async def sampling_loop(
     enable_prompt_caching: bool = True,
     verbose: bool = False,
 ):
-    """
-    Agentic sampling loop for the assistant/tool interaction of computer use.
-    """
+    """Agentic sampling loop for the assistant/tool interaction of computer use."""
     assert page is not None, "playwright page must be provided"
 
     system = BetaTextBlockParam(
@@ -88,7 +85,9 @@ async def sampling_loop(
                     if content_block["type"] == "text":
                         print(f"assistant > {content_block['text']}")
                     if message["role"] == "tool":
-                        print(f"tool call > {content_block['name']} {content_block['input']}")
+                        print(
+                            f"tool call > {content_block['name']} {content_block['input']}"
+                        )
     while True:
         enable_prompt_caching = False
         betas = [COMPUTER_USE_BETA_FLAG]
@@ -126,7 +125,9 @@ async def sampling_loop(
                 betas=betas,
             )
             if verbose:
-                sys.stdout.write("\r\033[K")  # Move to the beginning of the line and clear it
+                sys.stdout.write(
+                    "\r\033[K"
+                )  # Move to the beginning of the line and clear it
                 sys.stdout.flush()
         except (APIStatusError, APIResponseValidationError) as e:
             raise e
@@ -155,11 +156,15 @@ async def sampling_loop(
                 output_callback(content_block)
             if content_block["type"] == "tool_use":
                 if verbose:
-                    print(f"tool call > {content_block['name']} {content_block['input']}")
+                    print(
+                        f"tool call > {content_block['name']} {content_block['input']}"
+                    )
                 result = await tools.run_tool(
                     name=content_block["name"], input=content_block["input"]
                 )
-                tool_result_content.append(_make_api_tool_result(result, content_block["id"]))
+                tool_result_content.append(
+                    _make_api_tool_result(result, content_block["id"])
+                )
                 if tool_output_callback is not None:
                     tool_output_callback(result, content_block["id"])
             if verbose and content_block["type"] == "text":
@@ -174,6 +179,7 @@ async def sampling_loop(
 def anthropic_to_invariant(
     messages: list[dict], keep_empty_tool_response: bool = False
 ) -> list[dict]:
+    """Converts a list of messages from the Anthropic API to the Invariant API format."""
     output = []
     for message in messages:
         if message["role"] == "system":
@@ -194,7 +200,9 @@ def anthropic_to_invariant(
                             }
                         )
                     else:
-                        if keep_empty_tool_response and any([sub_message[k] for k in sub_message]):
+                        if keep_empty_tool_response and any(
+                            [sub_message[k] for k in sub_message]
+                        ):
                             output.append(
                                 {
                                     "role": "tool",
@@ -209,7 +217,9 @@ def anthropic_to_invariant(
         if message["role"] == "assistant":
             for sub_message in message["content"]:
                 if sub_message["type"] == "text":
-                    output.append({"role": "assistant", "content": sub_message.get("text")})
+                    output.append(
+                        {"role": "assistant", "content": sub_message.get("text")}
+                    )
                 if sub_message["type"] == "tool_use":
                     output.append(
                         {
@@ -235,7 +245,8 @@ def _maybe_filter_to_n_most_recent_images(
     images_to_keep: int,
     min_removal_threshold: int,
 ):
-    """
+    """Only keep latest images.
+
     With the assumption that images are screenshots that are of diminishing value as
     the conversation progresses, remove all but the final `images_to_keep` tool_result
     images in place, with a chunk of min_removal_threshold to reduce the amount we
@@ -249,7 +260,9 @@ def _maybe_filter_to_n_most_recent_images(
         [
             item
             for message in messages
-            for item in (message["content"] if isinstance(message["content"], list) else [])
+            for item in (
+                message["content"] if isinstance(message["content"], list) else []
+            )
             if isinstance(item, dict) and item.get("type") == "tool_result"
         ],
     )
@@ -292,24 +305,29 @@ def _response_to_params(
 def _inject_prompt_caching(
     messages: list[BetaMessageParam],
 ):
-    """
-    Set cache breakpoints for the 3 most recent turns
-    one cache breakpoint is left for tools/system prompt, to be shared across sessions
-    """
+    """Set cache breakpoints for the 3 most recent turns.
 
+    One cache breakpoint is left for tools/system prompt, to be shared across sessions
+    """
     breakpoints_remaining = 3
     for message in reversed(messages):
-        if message["role"] == "user" and isinstance(content := message["content"], list):
+        if message["role"] == "user" and isinstance(
+            content := message["content"], list
+        ):
             if breakpoints_remaining:
                 breakpoints_remaining -= 1
-                content[-1]["cache_control"] = BetaCacheControlEphemeralParam({"type": "ephemeral"})
+                content[-1]["cache_control"] = BetaCacheControlEphemeralParam(
+                    {"type": "ephemeral"}
+                )
             else:
                 content[-1].pop("cache_control", None)
                 # we'll only every have one extra turn per loop
                 break
 
 
-def _make_api_tool_result(result: ToolResult, tool_use_id: str) -> BetaToolResultBlockParam:
+def _make_api_tool_result(
+    result: ToolResult, tool_use_id: str
+) -> BetaToolResultBlockParam:
     """Convert an agent ToolResult to an API ToolResultBlockParam."""
     tool_result_content: list[BetaTextBlockParam | BetaImageBlockParam] | str = []
     is_error = False
