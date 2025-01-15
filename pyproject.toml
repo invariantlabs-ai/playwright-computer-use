@@ -1,8 +1,42 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "anthropic",
+    "python-dotenv",
+    "playwright",
+    "Pillow",
+    "invariant-sdk",
+    "python-dotenv",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playwright-computer-use"
+version = "0.0.1"
+authors = [
+  { name="Marco Milanta", email="marco@invariantlabs.ai" },
+]
+description = "A package to connect Claude computer use with Playwright."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/invariantlabs-ai/playwright-computer-use"
+Issues = "https://github.com/invariantlabs-ai/playwright-computer-use/issues"
+
+
 [tool.ruff]
 select = ["D", "G"]  # Include docstring rules (D) and Google-style docstring rules (G)
 ignore = []          # List rules to ignore, if any
 extend-ignore = []   # Optionally extend the ignore list
-docstring-convention = "google"  # Enforce Google-style docstrings
 
 # Optionally, specify additional settings for Ruff
 line-length = 88  # Adjust line length if needed
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
