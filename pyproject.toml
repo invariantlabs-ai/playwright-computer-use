@@ -33,6 +33,10 @@ Homepage = "https://github.com/invariantlabs-ai/playwright-computer-use"
 Issues = "https://github.com/invariantlabs-ai/playwright-computer-use/issues"
 
 
+[tool.setuptools.package-data]
+"playwright_computer_use" = ["assets/*.png"]
+
+
 [tool.ruff]
 select = ["D", "G"]  # Include docstring rules (D) and Google-style docstring rules (G)
 ignore = []          # List rules to ignore, if any

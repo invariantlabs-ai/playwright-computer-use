@@ -1,5 +1,6 @@
 """This module contains the PlaywrightToolbox class to be used with an Async Playwright Page."""
 
+import importlib.resources
 import base64
 from enum import StrEnum
 from typing import Literal, TypedDict
@@ -155,7 +156,11 @@ class PlaywrightBackTool:
 
     async def __call__(self):
         """Trigger the back button in the browser."""
-        await self.page.go_back()
+        try:
+            await self.page.go_back()
+            return ToolResult()
+        except Exception as e:
+            return ToolResult(error=str(e))
 
 
 class PlaywrightComputerTool:
@@ -283,7 +288,7 @@ class PlaywrightComputerTool:
         image = Image.open(io.BytesIO(screenshot))
         img_small = image.resize((self.width, self.height), Image.LANCZOS)
         if self.use_cursor:
-            cursor = Image.open("cursor.png").convert("RGBA")
+            cursor = load_cursor_image()
             img_small.paste(cursor, self.mouse_position, cursor)
         buffered = io.BytesIO()
         img_small.save(buffered, format="PNG")
@@ -349,3 +354,11 @@ def to_playwright_key(key: str) -> str:
         return "Backspace"
     print(f"Key {key} is not properly mapped into playwright")
     return key
+
+
+def load_cursor_image():
+    """Access the cursor.png file in the assets directory."""
+    with importlib.resources.open_binary("src.assets", "cursor.png") as img_file:
+        image = Image.open(img_file)
+        image.load()  # Ensure the image is fully loaded into memory
+    return image

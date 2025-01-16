@@ -4,6 +4,7 @@ from playwright.sync_api import Page
 from anthropic.types.beta import BetaToolComputerUse20241022Param, BetaToolParam
 from typing import Literal
 from PIL import Image
+import importlib.resources
 
 import io
 import base64
@@ -15,6 +16,7 @@ from computer_async import (
     chunks,
     TYPING_GROUP_SIZE,
     to_playwright_key,
+    load_cursor_image,
 )
 
 
@@ -248,8 +250,9 @@ class PlaywrightComputerTool:
         screenshot = self.page.screenshot()
         image = Image.open(io.BytesIO(screenshot))
         img_small = image.resize((self.width, self.height), Image.LANCZOS)
+
         if self.use_cursor:
-            cursor = Image.open("cursor.png").convert("RGBA")
+            cursor = load_cursor_image()
             img_small.paste(cursor, self.mouse_position, cursor)
         buffered = io.BytesIO()
         img_small.save(buffered, format="PNG")
