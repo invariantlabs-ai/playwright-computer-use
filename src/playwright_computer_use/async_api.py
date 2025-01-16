@@ -358,7 +358,7 @@ def to_playwright_key(key: str) -> str:
 
 def load_cursor_image():
     """Access the cursor.png file in the assets directory."""
-    with importlib.resources.open_binary("src.assets", "cursor.png") as img_file:
+    with importlib.resources.open_binary("assets", "cursor.png") as img_file:
         image = Image.open(img_file)
         image.load()  # Ensure the image is fully loaded into memory
     return image

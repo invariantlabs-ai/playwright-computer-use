@@ -8,7 +8,7 @@ import importlib.resources
 
 import io
 import base64
-from computer_async import (
+from playwright_computer_use.async_api import (
     ToolError,
     ToolResult,
     ComputerToolOptions,

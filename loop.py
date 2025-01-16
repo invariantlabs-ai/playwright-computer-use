@@ -29,7 +29,7 @@ from anthropic.types.beta import (
     BetaToolUseBlockParam,
 )
 
-from computer_async import PlaywrightToolbox, ToolResult
+from playwright_computer_use.async_api import PlaywrightToolbox, ToolResult
 
 COMPUTER_USE_BETA_FLAG = "computer-use-2024-10-22"
 PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
