@@ -363,6 +363,8 @@ def to_playwright_key(key: str) -> str:
         return "ArrowDown"
     if key == "BackSpace":
         return "Backspace"
+    if key == "alt":
+        return "Alt"
     print(f"Key {key} is not properly mapped into playwright")
     return key
 
