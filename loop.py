@@ -42,7 +42,6 @@ PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
 # helpful for the task at hand.
 SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 * You are utilising an firefox browser with internet access. The entirity of the task you are given can be solved by navigating from this web page.
-* You cannot set the url manually. You can only navigate within the page.
 * You can only use one page, and you can't open new tabs.
 * When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
 * When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request. At the end always ask for a screenshot, to make sure the state of the page is as you expect.
