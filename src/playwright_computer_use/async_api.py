@@ -74,6 +74,7 @@ class PlaywrightToolbox:
             PlaywrightComputerTool(page, use_cursor=use_cursor),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
+            PlaywrightLogStepTool(page)
         ]
 
     def to_params(self) -> list[BetaToolParam]:
@@ -124,6 +125,55 @@ class PlaywrightSetURLTool:
         try:
             await self.page.goto(url)
             return ToolResult()
+        except Exception as e:
+            return ToolResult(error=str(e))
+
+
+class PlaywrightLogStepTool:
+    """Tool to navigate to a specific URL."""
+
+    name: Literal["log_step"] = "log_step"
+
+    def __init__(self, page: Page):
+        """Creates a new PlaywrightLogStepTool.
+
+        Args:
+            page: The Async Playwright page to interact with.
+        """
+        super().__init__()
+        self.page = page
+
+    def to_params(self) -> BetaToolParam:
+        """Params describing the tool. Description used by Claude to understand how to this use tool."""
+        return BetaToolParam(
+            name=self.name,
+            description="""This tool should be called together with every meaningful interaction like when clicking something, or moving the mouse. It contains a string describing the action like 'Navigating to the Search page' or 'Clicking the Buy button'.
+            
+            The second parameter always indicates the current location in the application. This is a string with the location of the current trajectory, e.g. Home > Search > Search Results.
+            Adapt this string accordingly, when you go back or perform a new search.
+            """,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "step": {
+                        "type": "string",
+                        "description": "Log entry describing the current (high-level) action.",
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "The > separated location of the current trajectory, e.g. Home > Search > Search Results"
+                    }
+                },
+                "required": ["step"]
+            },
+        )
+
+    async def __call__(self, *, step: str, location: str):
+        """Trigger goto the chosen step."""
+        try:
+            print("[STEP]", step)
+            print("[LOCATION]", location)
+            return ToolResult(output=f"Logged step: {step} at location: {location}")
         except Exception as e:
             return ToolResult(error=str(e))
 

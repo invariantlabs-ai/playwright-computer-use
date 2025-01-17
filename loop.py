@@ -190,15 +190,27 @@ def anthropic_to_invariant(
                     assert sub_message["type"] == "tool_result"
                     if sub_message["content"]:
                         assert len(sub_message["content"]) == 1
-                        assert sub_message["content"][0]["type"] == "image"
-                        output.append(
-                            {
-                                "role": "tool",
-                                "content": "local_base64_img: "
-                                + sub_message["content"][0]["source"]["data"],
-                                "tool_id": sub_message["tool_use_id"],
-                            }
-                        )
+                        
+
+                        if sub_message["content"][0]["type"] == "image":
+                            output.append(
+                                {
+                                    "role": "tool",
+                                    "content": "local_base64_img: "
+                                    + sub_message["content"][0]["source"]["data"],
+                                    "tool_id": sub_message["tool_use_id"],
+                                }
+                            )
+                        else:
+                            print(sub_message["content"][0]["text"])
+                            output.append(
+                                {
+                                    "role": "tool",
+                                    "content": sub_message["content"][0]["text"],
+                                    "tool_id": sub_message["tool_use_id"],
+                                }
+                            )
+                        
                     else:
                         if keep_empty_tool_response and any(
                             [sub_message[k] for k in sub_message]
