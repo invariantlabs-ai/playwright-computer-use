@@ -17,6 +17,7 @@ from playwright_computer_use.async_api import (
     TYPING_GROUP_SIZE,
     to_playwright_key,
     load_cursor_image,
+    _make_api_tool_result,
 )
 
 
@@ -43,12 +44,13 @@ class PlaywrightToolbox:
         """Expose the params of all the tools in the toolbox."""
         return [tool.to_params() for tool in self.tools]
 
-    def run_tool(self, name: str, input: dict):
+    def run_tool(self, name: str, input: dict, tool_use_id: str):
         """Pick the right tool using `name` and run it."""
         if name not in [tool.name for tool in self.tools]:
             return ToolError(message=f"Unknown tool {name}, only computer use allowed")
         tool = next(tool for tool in self.tools if tool.name == name)
-        return tool(**input)
+        result = tool(**input)
+        return _make_api_tool_result(tool_use_id=tool_use_id, result=result)
 
 
 class PlaywrightSetURLTool:

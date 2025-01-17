@@ -160,11 +160,11 @@ async def sampling_loop(
                         f"tool call > {content_block['name']} {content_block['input']}"
                     )
                 result = await tools.run_tool(
-                    name=content_block["name"], input=content_block["input"]
+                    name=content_block["name"],
+                    input=content_block["input"],
+                    tool_use_id=content_block["id"],
                 )
-                tool_result_content.append(
-                    _make_api_tool_result(result, content_block["id"])
-                )
+                tool_result_content.append(result)
                 if tool_output_callback is not None:
                     tool_output_callback(result, content_block["id"])
             if verbose and content_block["type"] == "text":
@@ -323,45 +323,3 @@ def _inject_prompt_caching(
                 content[-1].pop("cache_control", None)
                 # we'll only every have one extra turn per loop
                 break
-
-
-def _make_api_tool_result(
-    result: ToolResult, tool_use_id: str
-) -> BetaToolResultBlockParam:
-    """Convert an agent ToolResult to an API ToolResultBlockParam."""
-    tool_result_content: list[BetaTextBlockParam | BetaImageBlockParam] | str = []
-    is_error = False
-    if result.error:
-        is_error = True
-        tool_result_content = _maybe_prepend_system_tool_result(result, result.error)
-    else:
-        if result.output:
-            tool_result_content.append(
-                {
-                    "type": "text",
-                    "text": _maybe_prepend_system_tool_result(result, result.output),
-                }
-            )
-        if result.base64_image:
-            tool_result_content.append(
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": result.base64_image,
-                    },
-                }
-            )
-    return {
-        "type": "tool_result",
-        "content": tool_result_content,
-        "tool_use_id": tool_use_id,
-        "is_error": is_error,
-    }
-
-
-def _maybe_prepend_system_tool_result(result: ToolResult, result_text: str):
-    if result.system:
-        result_text = f"<system>{result.system}</system>\n{result_text}"
-    return result_text

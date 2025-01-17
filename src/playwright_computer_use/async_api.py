@@ -7,7 +7,13 @@ from typing import Literal, TypedDict
 from playwright.async_api import Page
 from PIL import Image
 import io
-from anthropic.types.beta import BetaToolComputerUse20241022Param, BetaToolParam
+from anthropic.types.beta import (
+    BetaToolComputerUse20241022Param,
+    BetaToolParam,
+    BetaToolResultBlockParam,
+    BetaTextBlockParam,
+    BetaImageBlockParam,
+)
 from dataclasses import dataclass
 
 TYPING_GROUP_SIZE = 50
@@ -46,7 +52,6 @@ class ToolResult:
     output: str | None = None
     error: str | None = None
     base64_image: str | None = None
-    system: str | None = None
 
 
 class ToolError(Exception):
@@ -80,12 +85,15 @@ class PlaywrightToolbox:
         """Expose the params of all the tools in the toolbox."""
         return [tool.to_params() for tool in self.tools]
 
-    async def run_tool(self, name: str, input: dict):
+    async def run_tool(
+        self, name: str, input: dict, tool_use_id: str
+    ) -> BetaToolResultBlockParam:
         """Pick the right tool using `name` and run it."""
         if name not in [tool.name for tool in self.tools]:
             return ToolError(message=f"Unknown tool {name}, only computer use allowed")
         tool = next(tool for tool in self.tools if tool.name == name)
-        return await tool(**input)
+        result = await tool(**input)
+        return _make_api_tool_result(tool_use_id=tool_use_id, result=result)
 
 
 class PlaywrightSetURLTool:
@@ -185,7 +193,7 @@ class PlaywrightComputerTool:
         return {
             "display_width_px": self.width,
             "display_height_px": self.height,
-            "display_number": 0,  # hardcoded
+            "display_number": 1,  # hardcoded
         }
 
     def to_params(self) -> BetaToolComputerUse20241022Param:
@@ -377,3 +385,42 @@ def load_cursor_image():
         image = Image.open(img_file)
         image.load()  # Ensure the image is fully loaded into memory
     return image
+
+
+def _make_api_tool_result(
+    result: ToolResult, tool_use_id: str
+) -> BetaToolResultBlockParam:
+    """Convert an agent ToolResult to an API ToolResultBlockParam."""
+    if result.error:
+        return BetaToolResultBlockParam(
+            tool_use_id=tool_use_id,
+            is_error=True,
+            content=result.error,
+            type="tool_result",
+        )
+    else:
+        tool_result_content: list[BetaTextBlockParam | BetaImageBlockParam] = []
+        if result.output:
+            tool_result_content.append(
+                BetaTextBlockParam(
+                    type="text",
+                    text=result.output,
+                )
+            )
+        if result.base64_image:
+            tool_result_content.append(
+                BetaImageBlockParam(
+                    type="image",
+                    source={
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": result.base64_image,
+                    },
+                )
+            )
+        return BetaToolResultBlockParam(
+            tool_use_id=tool_use_id,
+            is_error=False,
+            content=tool_result_content,
+            type="tool_result",
+        )
