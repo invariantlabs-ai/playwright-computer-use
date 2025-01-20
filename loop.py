@@ -19,8 +19,6 @@ from anthropic import (
 from playwright.sync_api import Page
 from anthropic.types.beta import (
     BetaCacheControlEphemeralParam,
-    BetaContentBlockParam,
-    BetaImageBlockParam,
     BetaMessage,
     BetaMessageParam,
     BetaTextBlock,
