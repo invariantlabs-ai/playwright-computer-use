@@ -2,6 +2,8 @@
 
 Easily use the Claude `computer` tool to let an agent interact with a web browser on your machine (playwright).
 
+https://github.com/user-attachments/assets/cfd7adc1-3bac-42c6-9293-896f467973bc
+
 This repo contains the required code to connect a Playwright browser to Claude's computer use capabilities. This enables you to use a browser as a tool for your agent, to interact with web pages, and achieve tasks that require a browser.
 
 ## Quickstart
