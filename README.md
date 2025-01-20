@@ -11,22 +11,19 @@ Clone the Repo
 git clone https://github.com/invariantlabs-ai/playwright-computer-use.git
 ```
 
-Setup a virtual environment and install the requirements
+Install the dependencies:
 ```
-python -m venv venv
-. venv/bin/activate
-pip install .
+cd playwright-computer-use
+pip install -e .
 ```
 
-Create a `.env` basing on `.env-example` ([Anthropic Key](https://console.anthropic.com) and an optional [Invariant Key](https://explorer.invariantlabs.ai) for tracing)
-
-Then run
+Create a `.env` basing on `.env-example` ([Anthropic Key](https://console.anthropic.com) and an optional [Invariant Key](https://explorer.invariantlabs.ai) for tracing). Then run:
 
 ```
 python demo.py "How long does it take to travel from Zurich to Milan?"
 ```
 
-This will spawn an agent on your machine, that attempts to achieve whatever task you have in mind in the browser.
+This will spawn an agent on your machine that attempts to achieve whatever task you have in mind in the browser.
 
 ## Install As Package
 
