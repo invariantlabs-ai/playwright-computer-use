@@ -24,18 +24,28 @@ from playwright_computer_use.async_api import (
 class PlaywrightToolbox:
     """Toolbox for interaction between Claude and Sync Playwright Page."""
 
-    def __init__(self, page: Page, use_cursor: bool = True):
+    def __init__(
+        self,
+        page: Page,
+        use_cursor: bool = True,
+        screenshot_wait_until: Literal["load", "domcontentloaded", "networkidle"]
+        | None = None,
+    ):
         """Create a new PlaywrightToolbox.
 
         Args:
             page: The Sync Playwright page to interact with.
             use_cursor: Whether to display the cursor in the screenshots or not.
+            screenshot_wait_until: Optional, wait until the page is in a specific state before taking a screenshot. Default does not wait
+
         """
         self.page = page
         self.tools: list[
             PlaywrightComputerTool | PlaywrightSetURLTool | PlaywrightBackTool
         ] = [
-            PlaywrightComputerTool(page, use_cursor=use_cursor),
+            PlaywrightComputerTool(
+                page, use_cursor=use_cursor, screenshot_wait_until=screenshot_wait_until
+            ),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
         ]
@@ -157,17 +167,25 @@ class PlaywrightComputerTool:
         """Params describing the tool. Used by Claude to understand this is a computer use tool."""
         return {"name": self.name, "type": self.api_type, **self.options}
 
-    def __init__(self, page: Page, use_cursor: bool = True):
+    def __init__(
+        self,
+        page: Page,
+        use_cursor: bool = True,
+        screenshot_wait_until: Literal["load", "domcontentloaded", "networkidle"]
+        | None = None,
+    ):
         """Initializes the PlaywrightComputerTool.
 
         Args:
             page: The Sync Playwright page to interact with.
             use_cursor: Whether to display the cursor in the screenshots or not.
+            screenshot_wait_until: Optional, wait until the page is in a specific state before taking a screenshot. Default does not wait
         """
         super().__init__()
         self.page = page
         self.use_cursor = use_cursor
         self.mouse_position: tuple[int, int] = (0, 0)
+        self.screenshot_wait_until = screenshot_wait_until
 
     def __call__(
         self,
@@ -249,6 +267,8 @@ class PlaywrightComputerTool:
 
     def screenshot(self) -> ToolResult:
         """Take a screenshot of the current screen and return the base64 encoded image."""
+        if self.screenshot_wait_until is not None:
+            self.page.wait_for_timeout(self.screenshot_wait_until)
         screenshot = self.page.screenshot()
         image = Image.open(io.BytesIO(screenshot))
         img_small = image.resize((self.width, self.height), Image.LANCZOS)
