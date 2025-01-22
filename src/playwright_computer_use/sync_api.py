@@ -285,10 +285,10 @@ class PlaywrightComputerTool:
         """Press a key on the keyboard. Handle + shifts. Eg: Ctrl+Shift+T."""
         shifts = []
         if "+" in key:
-            inner_key = key.split("+")[-1]
             shifts += key.split("+")[:-1]
+            key = key.split("+")[-1]
         for shift in shifts:
             self.page.keyboard.down(shift)
-        self.page.keyboard.press(to_playwright_key(inner_key))
+        self.page.keyboard.press(to_playwright_key(key))
         for shift in shifts:
             self.page.keyboard.up(shift)
