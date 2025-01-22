@@ -268,7 +268,7 @@ class PlaywrightComputerTool:
     def screenshot(self) -> ToolResult:
         """Take a screenshot of the current screen and return the base64 encoded image."""
         if self.screenshot_wait_until is not None:
-            self.page.wait_for_timeout(self.screenshot_wait_until)
+            self.page.wait_for_load_state(self.screenshot_wait_until)
         screenshot = self.page.screenshot()
         image = Image.open(io.BytesIO(screenshot))
         img_small = image.resize((self.width, self.height), Image.LANCZOS)
