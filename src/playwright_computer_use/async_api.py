@@ -65,18 +65,28 @@ class ToolError(Exception):
 class PlaywrightToolbox:
     """Toolbox for interaction between Claude and Async Playwright Page."""
 
-    def __init__(self, page: Page, use_cursor: bool = True):
+    def __init__(
+        self,
+        page: Page,
+        use_cursor: bool = True,
+        screenshot_wait_until: Literal["load", "domcontentloaded", "networkidle"]
+        | None = None,
+    ):
         """Create a new PlaywrightToolbox.
 
         Args:
             page: The Async Playwright page to interact with.
             use_cursor: Whether to display the cursor in the screenshots or not.
+            screenshot_wait_until: Optional, wait until the page is in a specific state before taking a screenshot. Default does not wait
+
         """
         self.page = page
         self.tools: list[
             PlaywrightComputerTool | PlaywrightSetURLTool | PlaywrightBackTool
         ] = [
-            PlaywrightComputerTool(page, use_cursor=use_cursor),
+            PlaywrightComputerTool(
+                page, use_cursor=use_cursor, screenshot_wait_until=screenshot_wait_until
+            ),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
         ]
