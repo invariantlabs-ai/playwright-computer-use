@@ -343,6 +343,8 @@ def to_playwright_key(key: str) -> str:
         ["F{i}" for i in range(1, 13)]
         + ["Digit{i}" for i in range(10)]
         + ["Key{i}" for i in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+        + [i for i in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+        + [i.lower() for i in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
         + [
             "Backquote",
             "Minus",
