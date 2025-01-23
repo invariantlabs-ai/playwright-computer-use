@@ -42,7 +42,6 @@ PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
 # helpful for the task at hand.
 SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 * You are utilising an firefox browser with internet access. The entirity of the task you are given can be solved by navigating from this web page.
-* You cannot set the url manually. You can only navigate within the page.
 * You can only use one page, and you can't open new tabs.
 * When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
 * When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request. At the end always ask for a screenshot, to make sure the state of the page is as you expect.
@@ -54,16 +53,11 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 async def sampling_loop(
     *,
     model: str,
-    anthropic_client: Anthropic | AnthropicVertex | AnthropicBedrock,
+    anthropic_client: Anthropic,
     system_prompt: str = SYSTEM_PROMPT,
     messages: list[BetaMessageParam],
     page: Page,
     tools: PlaywrightToolbox,
-    output_callback: Callable[[BetaContentBlockParam], None] = None,
-    tool_output_callback: Callable[[ToolResult, str], None] = None,
-    api_response_callback: Callable[
-        [httpx.Request, httpx.Response | object | None, Exception | None], None
-    ] = None,
     only_n_most_recent_images: int | None = None,
     max_tokens: int = 4096,
     enable_prompt_caching: bool = True,
@@ -116,7 +110,7 @@ async def sampling_loop(
             if verbose:
                 sys.stdout.write("Calling Model")
                 sys.stdout.flush()
-            raw_response = anthropic_client.beta.messages.with_raw_response.create(
+            response = anthropic_client.beta.messages.create(
                 max_tokens=max_tokens,
                 messages=messages,
                 model=model,
@@ -132,15 +126,7 @@ async def sampling_loop(
         except (APIStatusError, APIResponseValidationError) as e:
             raise e
         except APIError as e:
-            api_response_callback(e.request, e.body, e)
             return [{"role": "system", "content": system_prompt}] + messages
-
-        if api_response_callback is not None:
-            api_response_callback(
-                raw_response.http_response.request, raw_response.http_response, None
-            )
-
-        response = raw_response.parse()
 
         response_params = _response_to_params(response)
         messages.append(
@@ -152,8 +138,6 @@ async def sampling_loop(
 
         tool_result_content: list[BetaToolResultBlockParam] = []
         for content_block in response_params:
-            if output_callback is not None:
-                output_callback(content_block)
             if content_block["type"] == "tool_use":
                 if verbose:
                     print(
@@ -165,8 +149,6 @@ async def sampling_loop(
                     tool_use_id=content_block["id"],
                 )
                 tool_result_content.append(result)
-                if tool_output_callback is not None:
-                    tool_output_callback(result, content_block["id"])
             if verbose and content_block["type"] == "text":
                 print(f"assistant > {content_block['text']}")
 
