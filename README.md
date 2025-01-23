@@ -38,6 +38,8 @@ pip install git://git@github.com/invariantlabs-ai/playwright-computer-use.git
 You can also include the `PlaywrightToolbox` as a tool for `Claude`, to enable the use of a playwright browser in an existing agent.
 
 ```python
+from playwright_computer_use.sync_api import PlaywrightToolbox #Use sync api when working with sync Playwright page, use async otherwise
+
 tools = PlaywrightToolbox(page=page, use_cursor=True)
 
 # Give Claude access to computer use tool
