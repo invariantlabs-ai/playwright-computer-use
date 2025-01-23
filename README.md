@@ -38,7 +38,7 @@ pip install git://git@github.com/invariantlabs-ai/playwright-computer-use.git
 You can also include the `PlaywrightToolbox` as a tool for `Claude`, to enable the use of a playwright browser in an existing agent.
 
 ```python
-tools = tools = PlaywrightToolbox(page=page, use_cursor=True)
+tools = PlaywrightToolbox(page=page, use_cursor=True)
 
 # Give Claude access to computer use tool
 response = anthropic_client.beta.messages.create(
