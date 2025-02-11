@@ -1,14 +1,15 @@
 """UI TARS loop."""
 
 import os
+import sys
 from openai import OpenAI
-from src.playwright_ui_tars.sync_api import PlaywrightComputerTool
+from src.playwright_ui_tars.sync_api import PlaywrightComputerTool, ActionSignature
 from invariant_sdk.client import Client as InvariantClient
 from copy import deepcopy
 from dotenv import load_dotenv
 
 load_dotenv()
-SYSTEM_PROMPT = r"""You are a GUI agent. You have access to a browser. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
+SYSTEM_PROMPT = r"""You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
 
 ## Output Format
 ```\nThought: ...
@@ -43,17 +44,18 @@ def keep_latest_images(messages, k):
     messages = deepcopy(messages)
     images_paths = []
     for i, message in enumerate(messages):
-        if "content" in message:
+        if "content" in message and message.get("tool_call_id") is None:
             for j, content in enumerate(message["content"]):
                 if content["type"] == "image_url":
                     images_paths.append((i, j))
     if len(images_paths) <= k:
-        return messages
+        return [m for m in messages if "tool_call_id" not in m]
     images_paths_to_remove = images_paths[:-k]
     images_paths_to_remove.sort(key=lambda x: x[1], reverse=True)
     for i, j in images_paths_to_remove:
         messages[i]["content"].pop(j)
-    return messages
+
+    return [m for m in messages if "tool_call_id" not in m]
 
 
 def sampling_loop(
@@ -110,31 +112,63 @@ client = OpenAI(
     api_key="empty",
     base_url="http://127.0.0.1:8000/v1",
 )
-invariant_client = InvariantClient() if "INVARIANT_API_KEY" in os.environ else None
+invariant_client = (
+    InvariantClient(api_url="http://127.0.0.1")
+    if "INVARIANT_API_KEY" in os.environ
+    else None
+)
 
 
-def main():
+def main(prompt):
     """Run the Agent loop."""
     with sync_playwright() as playwright:
         with playwright.chromium.launch(headless=False) as browser:
             context = browser.new_context()
             page = context.new_page()
             page.set_viewport_size({"width": 1024, "height": 768})
-            page.goto("https://www.calculator.net/")
+            page.goto("https://www.openstreetmap.org/directions")
             playwright_computer_tool = PlaywrightComputerTool(page=page, verbose=True)
             messages = sampling_loop(
-                prompt="Drag and drop stuff around",
+                prompt=prompt,
                 client=client,
                 playwright_computer_tool=playwright_computer_tool,
             )
+    invariant_messages = []
+    for message in messages:
+        invariant_messages.append(message)
+        if message.get("role") == "assistant":
+            actions: list[ActionSignature] = []
+            for content in message["content"]:
+                actions.append(playwright_computer_tool.parse_action(content["text"]))
+            if actions:
+                invariant_messages.append(
+                    {  # append result message
+                        "role": "assistant",
+                        "tool_call_id": 0,
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "tool_id": "tool_0",
+                                "type": "function",
+                                "function": action.to_dict(
+                                    scale_coords=True, tool=playwright_computer_tool
+                                ),
+                            }
+                            for action in actions
+                        ],
+                    }
+                )
     if invariant_client:
         response = invariant_client.create_request_and_push_trace(
-            messages=[messages],
+            messages=[invariant_messages],
             dataset="ui-tars",
         )
         url = f"{invariant_client.api_url}/trace/{response.id[0]}"
         print(f"View the trace at {url}")
 
 
+prompt = sys.argv[1] if len(sys.argv) > 1 else "Click on from."
+
+
 if __name__ == "__main__":
-    main()
+    main(prompt)

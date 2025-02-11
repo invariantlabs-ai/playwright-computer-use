@@ -1,14 +1,16 @@
 """Playwright UI-TARS Sync API."""
 
-from typing import Literal, Any, no_type_check
+from __future__ import annotations
+from typing import Literal, Any
 from playwright.sync_api import Page
-from inspect import signature
+import inspect
 import ast
 import logging
 import io
 from playwright_computer_use.async_api import load_cursor_image
 from PIL import Image
 import base64
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +39,8 @@ class PlaywrightComputerTool:
         self.use_cursor = use_cursor
         self.mouse_position: tuple[int, int] = (0, 0)
 
-    def _click(self, start_box: tuple[int, int]) -> Literal[True]:
-        if isinstance(start_box, str):
-            start_box = ast.literal_eval(start_box)
+    def action_click(self, start_box: tuple[int, int]) -> Literal[True]:
+        """Click action."""
         if self.verbose:
             logger.info(f"Clicking on {start_box}")
         start_box = self._relative_to_absolute_coords(start_box)
@@ -47,9 +48,8 @@ class PlaywrightComputerTool:
         self.page.mouse.click(*start_box)
         return True
 
-    def _left_double(self, start_box: tuple[int, int]) -> Literal[True]:
-        if isinstance(start_box, str):
-            start_box = ast.literal_eval(start_box)
+    def action_left_double(self, start_box: tuple[int, int]) -> Literal[True]:
+        """Double click action."""
         if self.verbose:
             logger.info(f"Double clicking on {start_box}")
         start_box = self._relative_to_absolute_coords(start_box)
@@ -57,9 +57,8 @@ class PlaywrightComputerTool:
         self.page.mouse.dblclick(*start_box)
         return True
 
-    def _right_single(self, start_box: tuple[int, int]) -> Literal[True]:
-        if isinstance(start_box, str):
-            start_box = ast.literal_eval(start_box)
+    def action_right_single(self, start_box: tuple[int, int]) -> Literal[True]:
+        """Right click action."""
         if self.verbose:
             logger.info(f"Right clicking on {start_box}")
         start_box = self._relative_to_absolute_coords(start_box)
@@ -67,43 +66,41 @@ class PlaywrightComputerTool:
         self.page.mouse.click(*start_box, button="right")
         return True
 
-    def _drag(
+    def action_drag(
         self, start_box: tuple[int, int], end_box: tuple[int, int]
     ) -> Literal[True]:
-        if isinstance(start_box, str):
-            start_box = ast.literal_eval(start_box)
-        if isinstance(end_box, str):
-            end_box = ast.literal_eval(end_box)
+        """Drag action."""
         if self.verbose:
             logger.info(f"Dragging from {start_box} to {end_box}")
         start_box = self._relative_to_absolute_coords(start_box)
         end_box = self._relative_to_absolute_coords(end_box)
         self.mouse_position = end_box
-        self.page.drag_and_drop(source_position=start_box, target_position=end_box)
+        self.page.drag_and_drop(source=start_box, target=end_box)
         return True
 
-    def _hotkey(self, key: str) -> Literal[True]:
+    def action_hotkey(self, key: str) -> Literal[True]:
+        """Hotkey action."""
         if self.verbose:
             logger.info(f"Pressing hotkey {key}")
         key = to_playwright_key(key)
         self.page.keyboard.press(key)
         return True
 
-    def _type(self, content: str) -> Literal[True]:
+    def action_type(self, content: str) -> Literal[True]:
+        """Type action."""
         if self.verbose:
             logger.info(f"Typing {content}")
         self.page.keyboard.type(content)
         return True
 
-    def _scroll(
+    def action_scroll(
         self,
         direction: Literal["down", "up", "right", "left"],
         start_box: tuple[int, int] | None = None,
     ) -> Literal[True]:
+        """Scroll action."""
         if self.verbose:
             logger.info(f"Scrolling {direction} from {start_box}")
-        if isinstance(start_box, str):
-            start_box = ast.literal_eval(start_box)
         deltaX, deltaY = 0, 0
         if direction == "down":
             deltaY = 100
@@ -120,18 +117,21 @@ class PlaywrightComputerTool:
         self.page.mouse.wheel(delta_x=deltaX, delta_y=deltaY)
         return True
 
-    def _wait(self) -> Literal[True]:
+    def action_wait(self) -> Literal[True]:
+        """Wait action."""
         if self.verbose:
             logger.info("Waiting for 5s")
         self.page.wait_for_timeout(5000)
         return True
 
-    def _finished(self) -> Literal[False]:
+    def action_finished(self) -> Literal[False]:
+        """Finished action. go_on = False."""
         if self.verbose:
             logger.info("Finished")
         return False
 
-    def _call_user(self) -> Literal[False]:
+    def action_call_user(self) -> Literal[False]:
+        """Call user action. go_on = False."""
         if self.verbose:
             logger.info("Calling user function")
         return False
@@ -167,17 +167,17 @@ class PlaywrightComputerTool:
             "image_url": {"url": f"data:image/png;base64,{self._screenshot()}"},
         }
 
-    def parse_and_run_action(self, model_message: str) -> bool:
-        """Function to parse the model action message and execute."""
+    def parse_action(self, model_message: str) -> ActionSignature | None:
+        """Function to parse the model action message."""
         # finding the line with action
         lines = model_message.split("\n")
-        for i, line in enumerate(lines):
+        for line in lines:
             if line.startswith("Action"):
                 action_line = line
                 break
         else:
             logger.warning("No action found in the message.")
-            return False
+            return None
 
         # parsing
         action_title = action_line.split(": ")[0]
@@ -190,11 +190,63 @@ class PlaywrightComputerTool:
 
         fn_args = [arg.value for arg in fn_args]  # type: ignore
         fn_kwargs = {kw.arg: kw.value.value for kw in fn_kwargs}  # type: ignore
-        action_func = getattr(self, f"_{fn_name}")
+        return ActionSignature(
+            name=fn_name, args=fn_args, kwargs=parse_kwargs(fn_kwargs)
+        )
 
-        # running
-        go_on = action_func(**fn_kwargs)
-        return go_on
+    def run_action(self, action: ActionSignature) -> bool:
+        """Function to run the model action message."""
+        action_func = getattr(self, f"action_{action.name}")
+        # running the action
+        return action_func(*action.args, **action.kwargs)
+
+    def parse_and_run_action(self, model_message: str) -> bool:
+        """Function to parse the model action message and execute."""
+        action = self.parse_action(model_message)
+        if action is None:
+            return False
+        return self.run_action(action)
+
+
+def parse_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Parse the kwargs to the correct type."""
+    nkwargs = {}
+    for k in kwargs:
+        if k in ["start_box", "end_box"]:
+            nkwargs[k] = ast.literal_eval(kwargs[k])
+        else:
+            nkwargs[k] = kwargs[k]
+    return nkwargs
+
+
+@dataclass
+class ActionSignature:
+    """Dataclass to store function signature."""
+
+    name: str
+    args: list[str]
+    kwargs: dict[str, Any]
+
+    def to_dict(
+        self, scale_coords: bool = False, tool: PlaywrightComputerTool | None = None
+    ) -> dict[str, Any]:
+        """Serialize function signature to a dictionary."""
+        if scale_coords:
+            if tool is None:
+                raise ValueError("tool argument is required when scale_coords is True.")
+            scaled_kwargs = {}
+            for k in self.kwargs:
+                if k in ["start_box", "end_box"]:
+                    scaled_kwargs[k] = tool._relative_to_absolute_coords(self.kwargs[k])
+                else:
+                    scaled_kwargs[k] = self.kwargs[k]
+        else:
+            scaled_kwargs = self.kwargs
+        return {
+            "name": self.name,
+            "arguments": {f"arg{i}": arg for i, arg in enumerate(self.args)}
+            | scaled_kwargs,
+        }
 
 
 def to_playwright_key(key: str) -> str:
@@ -231,9 +283,15 @@ def to_playwright_key(key: str) -> str:
         return "Enter"
     if key == "pagedown":
         return "PageDown"
+    if key == "pageup":
+        return "PageUp"
     if key == "backspace":
         return "Backspace"
     if key == "ctrl":
         return "Ctrl"
+    if key == "arrowdown":
+        return "ArrowDown"
+    if key == "arrowup":
+        return "ArrowUp"
     print(f"Key {key} is not properly mapped into playwright")
     return key
