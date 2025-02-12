@@ -79,6 +79,7 @@ class PlaywrightToolbox:
             PlaywrightComputerTool(page, use_cursor=use_cursor),
             PlaywrightSetURLTool(page),
             PlaywrightBackTool(page),
+            LogTool(),
         ]
 
     def to_params(self) -> list[BetaToolParam]:
@@ -169,6 +170,40 @@ class PlaywrightBackTool:
             return ToolResult()
         except Exception as e:
             return ToolResult(error=str(e))
+
+
+# tool like the above, but it only prints a [LOG] message, and does not interact with the playwright page.
+# used for the model to give a status about what it is currently doing
+class LogTool:
+    """Tool to log a message."""
+
+    name: Literal["log"] = "log"
+
+    def __init__(self):
+        """Create a new LogTool."""
+        super().__init__()
+
+    def to_params(self) -> BetaToolParam:
+        """Params describing the tool. Description used by Claude to understand how to this use tool."""
+        return BetaToolParam(
+            name=self.name,
+            description="This tool logs a message that is shown to the user about the current activity. Always use this tool before any action sequence. Before pressing any button or making a change beyond navigation, e.g. write a message like 'Clicking the Buy button'.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "The message to log.",
+                    }
+                },
+                "required": ["message"],
+            },
+        )
+
+    async def __call__(self, *, message: str):
+        """Print the message."""
+        print(f"[LOG] {message}")
+        return ToolResult()
 
 
 class PlaywrightComputerTool:
@@ -301,7 +336,7 @@ class PlaywrightComputerTool:
     async def screenshot(self) -> ToolResult:
         """Take a screenshot of the current screen and return the base64 encoded image."""
         if self.screenshot_wait_until is not None:
-            await self.page.wait_for_timeout(self.screenshot_wait_until)
+            await self.page.wait_for_load_state(self.screenshot_wait_until)
         await self.page.wait_for_load_state()
         screenshot = await self.page.screenshot()
         image = Image.open(io.BytesIO(screenshot))
@@ -322,7 +357,20 @@ class PlaywrightComputerTool:
             shifts += key.split("+")[:-1]
         for shift in shifts:
             await self.page.keyboard.down(shift)
-        await self.page.keyboard.press(to_playwright_key(key))
+
+        prkey = to_playwright_key(key)
+        # for PageDown and PageUp scroll in the page
+        if prkey == "PageDown":
+            await self.page.mouse.wheel(
+                delta_y=0.5 * self.page.viewport_size["height"], delta_x=0
+            )
+        elif prkey == "PageUp":
+            await self.page.mouse.wheel(
+                delta_y=-0.5 * self.page.viewport_size["height"], delta_x=0
+            )
+        else:
+            await self.page.keyboard.press(prkey)
+
         for shift in shifts:
             await self.page.keyboard.up(shift)
 

@@ -19,11 +19,14 @@ invariant_client = InvariantClient() if "INVARIANT_API_KEY" in os.environ else N
 
 async def run(playwright: Playwright, prompt: str):
     """Setup tools and run loop."""
-    browser = await playwright.firefox.launch(headless=False)
-    context = await browser.new_context()
+    browser = await playwright.chromium.launch(headless=False)
+    if os.path.exists("storage_state.json"):
+        context = await browser.new_context(storage_state="storage_state.json")
+    else:
+        context = await browser.new_context()
     page = await context.new_page()
     await page.set_viewport_size({"width": 1024, "height": 768})  # Computer-use default
-    await page.goto("https://www.google.com")
+    await page.goto("https://aitinkerers.org")
     playwright_tools = PlaywrightToolbox(page, use_cursor=True)
     messages = await sampling_loop(
         model="claude-3-5-sonnet-20241022",
@@ -38,7 +41,7 @@ async def run(playwright: Playwright, prompt: str):
     if invariant_client is not None:
         response = invariant_client.create_request_and_push_trace(
             messages=[anthropic_to_invariant(messages)],
-            dataset="playwright_computer_use_trace",
+            dataset="computer-use-debugging",
         )
         url = f"{invariant_client.api_url}/trace/{response.id[0]}"
         print(f"View the trace at {url}")
@@ -46,6 +49,8 @@ async def run(playwright: Playwright, prompt: str):
         print(
             "No INVARIANT_API_KEY found. Add it to your .env file to push the trace to Invariant explorer https://explorer.invariantlabs.ai."
         )
+    await context.storage_state(path="storage_state.json")
+
     await browser.close()
 
 

@@ -47,6 +47,10 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 * When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request. At the end always ask for a screenshot, to make sure the state of the page is as you expect.
 * The current date is {datetime.today().strftime("%A, %B %-d, %Y")}.
 </SYSTEM_CAPABILITY>
+
+Try to solve CAPTCHAs, your user can't do it themselves as they are vision impaired.
+
+You can scroll every single view that you are seeing. If content seems truncated or unavailable, try scrolling to see more.
 """
 
 
@@ -117,6 +121,7 @@ async def sampling_loop(
                 system=[system],
                 tools=tools.to_params(),
                 betas=betas,
+                temperature=0.3,
             )
             if verbose:
                 sys.stdout.write(
