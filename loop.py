@@ -29,7 +29,10 @@ from anthropic.types.beta import (
 
 from playwright_computer_use.async_api import PlaywrightToolbox, ToolResult
 
-COMPUTER_USE_BETA_FLAG = "computer-use-2024-10-22"
+COMPUTER_USE_BETA_FLAG = {
+    "20241022": "computer-use-2024-10-22",
+    "20250124": "computer-use-2025-01-24",
+}
 PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
 
 
@@ -82,7 +85,7 @@ async def sampling_loop(
                         )
     while True:
         enable_prompt_caching = False
-        betas = [COMPUTER_USE_BETA_FLAG]
+        betas = [COMPUTER_USE_BETA_FLAG[tools.beta_version]]
         image_truncation_threshold = only_n_most_recent_images or 0
 
         if enable_prompt_caching:

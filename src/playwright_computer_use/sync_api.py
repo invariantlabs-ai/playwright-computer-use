@@ -1,18 +1,24 @@
 """This module contains the PlaywrightToolbox class to be used with an Async Playwright Page."""
 
 from playwright.sync_api import Page
-from anthropic.types.beta import BetaToolComputerUse20241022Param, BetaToolParam
-from typing import Literal
+from anthropic.types.beta import (
+    BetaToolComputerUse20241022Param,
+    BetaToolParam,
+    BetaToolComputerUse20250124Param,
+)
+from typing import Literal, get_args, cast, Type
 from PIL import Image
 import importlib.resources
-
+from time import sleep
 import io
 import base64
 from playwright_computer_use.async_api import (
     ToolError,
     ToolResult,
     ComputerToolOptions,
-    Action,
+    Action_20250124,
+    Action_20241022,
+    ScrollDirection,
     chunks,
     TYPING_GROUP_SIZE,
     to_playwright_key,
@@ -22,7 +28,7 @@ from playwright_computer_use.async_api import (
 
 
 class PlaywrightToolbox:
-    """Toolbox for interaction between Claude and Sync Playwright Page."""
+    """Toolbox for interaction between Claude and Async Playwright Page."""
 
     def __init__(
         self,
@@ -30,20 +36,27 @@ class PlaywrightToolbox:
         use_cursor: bool = True,
         screenshot_wait_until: Literal["load", "domcontentloaded", "networkidle"]
         | None = None,
+        beta_version: Literal["20241022", "20250124"] = "20250124",
     ):
         """Create a new PlaywrightToolbox.
 
         Args:
-            page: The Sync Playwright page to interact with.
+            page: The Async Playwright page to interact with.
             use_cursor: Whether to display the cursor in the screenshots or not.
             screenshot_wait_until: Optional, wait until the page is in a specific state before taking a screenshot. Default does not wait
-
+            beta_version: The version of the beta to use. Default is the latest version (Claude3.7)
         """
         self.page = page
+        self.beta_version = beta_version
+        computer_tool_map: dict[str, Type[BasePlaywrightComputerTool]] = {
+            "20241022": PlaywrightComputerTool20241022,
+            "20250124": PlaywrightComputerTool20250124,
+        }
+        ComputerTool = computer_tool_map[beta_version]
         self.tools: list[
-            PlaywrightComputerTool | PlaywrightSetURLTool | PlaywrightBackTool
+            BasePlaywrightComputerTool | PlaywrightSetURLTool | PlaywrightBackTool
         ] = [
-            PlaywrightComputerTool(
+            ComputerTool(
                 page, use_cursor=use_cursor, screenshot_wait_until=screenshot_wait_until
             ),
             PlaywrightSetURLTool(page),
@@ -138,11 +151,10 @@ class PlaywrightBackTool:
             return ToolResult(error=str(e))
 
 
-class PlaywrightComputerTool:
+class BasePlaywrightComputerTool:
     """A tool that allows the agent to interact with Sync Playwright Page."""
 
     name: Literal["computer"] = "computer"
-    api_type: Literal["computer_20241022"] = "computer_20241022"
 
     @property
     def width(self) -> int:
@@ -163,9 +175,9 @@ class PlaywrightComputerTool:
             "display_number": 0,  # hardcoded
         }
 
-    def to_params(self) -> BetaToolComputerUse20241022Param:
+    def to_params(self):
         """Params describing the tool. Used by Claude to understand this is a computer use tool."""
-        return {"name": self.name, "type": self.api_type, **self.options}
+        raise NotImplementedError("to_params must be implemented in the subclass")
 
     def __init__(
         self,
@@ -190,7 +202,7 @@ class PlaywrightComputerTool:
     def __call__(
         self,
         *,
-        action: Action,
+        action: Action_20241022,
         text: str | None = None,
         coordinate: tuple[int, int] | None = None,
         **kwargs,
@@ -292,3 +304,119 @@ class PlaywrightComputerTool:
         self.page.keyboard.press(to_playwright_key(key))
         for shift in shifts:
             self.page.keyboard.up(shift)
+
+
+class PlaywrightComputerTool20241022(BasePlaywrightComputerTool):
+    """Tool to interact with the computer using Playwright (Beta 22/10/2024)."""
+
+    api_type: Literal["computer_20241022"] = "computer_20241022"
+
+    def to_params(self) -> BetaToolComputerUse20241022Param:
+        """Params describing the tool. Used by Claude to understand this is a computer use tool."""
+        return {"name": self.name, "type": self.api_type, **self.options}
+
+
+class PlaywrightComputerTool20250124(BasePlaywrightComputerTool):
+    """Tool to interact with the computer using Playwright (Beta 24/01/2025)."""
+
+    api_type: Literal["computer_20250124"] = "computer_20250124"
+
+    def to_params(self) -> BetaToolComputerUse20250124Param:
+        """Params describing the tool. Used by Claude to understand this is a computer use tool."""
+        return {"name": self.name, "type": self.api_type, **self.options}
+
+    def __call__(
+        self,
+        *,
+        action: Action_20250124,
+        text: str | None = None,
+        coordinate: tuple[int, int] | None = None,
+        scroll_direction: ScrollDirection | None = None,
+        scroll_amount: int | None = None,
+        duration: int | float | None = None,
+        key: str | None = None,
+        **kwargs,
+    ):
+        """Run an action. text, coordinate, scroll_directions, scroll_amount, duration, key are potential additional parameters."""
+        if action in ("left_mouse_down", "left_mouse_up"):
+            if coordinate is not None:
+                raise ToolError(f"coordinate is not accepted for {action=}.")
+            self.page.mouse.down() if action == "left_mouse_down" else self.page.mouse.up()
+            return ToolResult()
+        if action == "scroll":
+            if scroll_direction is None or scroll_direction not in get_args(
+                ScrollDirection
+            ):
+                raise ToolError(
+                    f"{scroll_direction=} must be 'up', 'down', 'left', or 'right'"
+                )
+            if not isinstance(scroll_amount, int) or scroll_amount < 0:
+                raise ToolError(f"{scroll_amount=} must be a non-negative int")
+            if coordinate is not None:
+                x, y = coordinate
+                self.page.mouse.move(x, y)
+                self.mouse_position = (x, y)
+            scroll_amount *= 100
+            scroll_params = {
+                "up": {"delta_y": -scroll_amount, "delta_x": 0},
+                "down": {"delta_y": scroll_amount, "delta_x": 0},
+                "left": {"delta_y": 0, "delta_x": scroll_amount},
+                "right": {"delta_y": 0, "delta_x": -scroll_amount},
+            }[scroll_direction]
+
+            self.page.mouse.wheel(**scroll_params)
+            return ToolResult()
+
+        if action in ("hold_key", "wait"):
+            if duration is None or not isinstance(duration, (int, float)):
+                raise ToolError(f"{duration=} must be a number")
+            if duration < 0:
+                raise ToolError(f"{duration=} must be non-negative")
+            if duration > 100:
+                raise ToolError(f"{duration=} is too long.")
+
+            if action == "hold_key":
+                if text is None:
+                    raise ToolError(f"text is required for {action}")
+                self.page.keyboard.press(to_playwright_key(text), delay=duration)
+                return ToolResult()
+
+            if action == "wait":
+                sleep(duration)
+                return self.screenshot()
+
+        if action in (
+            "left_click",
+            "right_click",
+            "double_click",
+            "triple_click",
+            "middle_click",
+        ):
+            if text is not None:
+                raise ToolError(f"text is not accepted for {action}")
+            if coordinate is not None:
+                x, y = coordinate
+                self.page.mouse.move(x, y)
+                self.mouse_position = (x, y)
+
+            click_arg = {
+                "left_click": {"button": "left", "click_count": 1},
+                "right_click": {"button": "right", "click_count": 1},
+                "middle_click": {"button": "middle", "click_count": 1},
+                "double_click": {"button": "left", "click_count": 2, "delay": 10},
+                "double_click": {"button": "left", "click_count": 3, "delay": 10},
+            }[action]
+            if key:
+                self.page.keyboard.down(to_playwright_key(key))
+            self.page.mouse.click(
+                self.mouse_position[0], self.mouse_position[1], **click_arg
+            )
+            if key:
+                self.page.keyboard.up(to_playwright_key(key))
+
+            return ToolResult()
+
+        action = cast(Action_20241022, action)
+        return super().__call__(
+            action=action, text=text, coordinate=coordinate, key=key, **kwargs
+        )

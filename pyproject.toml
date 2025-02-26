@@ -26,7 +26,6 @@ dependencies = [
     "playwright",
     "Pillow",
     "invariant-sdk",
-    "python-dotenv",
 ]
 [project.urls]
 Homepage = "https://github.com/invariantlabs-ai/playwright-computer-use"
