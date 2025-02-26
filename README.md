@@ -6,6 +6,8 @@ https://github.com/user-attachments/assets/3d876280-4822-4679-9dd1-689a0f596041
 
 This repo contains the required code to connect a Playwright browser to Claude's computer use capabilities. This enables you to use a browser as a tool for your agent, to interact with web pages, and achieve tasks that require a browser.
 
+We now also support `Claude3.7`
+
 ## Quickstart
 
 Clone the Repo
@@ -40,13 +42,14 @@ You can also include the `PlaywrightToolbox` as a tool for `Claude`, to enable t
 ```python
 from playwright_computer_use.sync_api import PlaywrightToolbox #Use sync api when working with sync Playwright page, use async otherwise
 
-tools = PlaywrightToolbox(page=page, use_cursor=True)
+tools = PlaywrightToolbox(page=page, use_cursor=True, beta_version="20250124")
 
 # Give Claude access to computer use tool
 response = anthropic_client.beta.messages.create(
     ...
+    model="claude-3-7-sonnet-20250219",
     tools=tools.to_params(),
-    betas=["computer-use-2024-10-22"],
+    betas=["computer-use-2025-01-24"],
 )
 
 # Run computer use tool on playwright
