@@ -18,6 +18,7 @@ from anthropic.types.beta import (
 from dataclasses import dataclass
 
 TYPING_DELAY_MS = 12
+SCROLL_MULTIPLIER_FACTOR = 500
 TYPING_GROUP_SIZE = 50
 
 Action_20241022 = Literal[
@@ -411,7 +412,7 @@ class PlaywrightComputerTool20250124(BasePlaywrightComputerTool):
                 x, y = coordinate
                 await self.page.mouse.move(x, y)
                 self.mouse_position = (x, y)
-            scroll_amount *= 100
+            scroll_amount *= SCROLL_MULTIPLIER_FACTOR
             scroll_params = {
                 "up": {"delta_y": -scroll_amount, "delta_x": 0},
                 "down": {"delta_y": scroll_amount, "delta_x": 0},
