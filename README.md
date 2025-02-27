@@ -6,7 +6,7 @@ https://github.com/user-attachments/assets/3d876280-4822-4679-9dd1-689a0f596041
 
 This repo contains the required code to connect a Playwright browser to Claude's computer use capabilities. This enables you to use a browser as a tool for your agent, to interact with web pages, and achieve tasks that require a browser.
 
-We now also support `Claude3.7`
+**We now also support Claude 3.7!**
 
 ## Quickstart
 
