@@ -21,6 +21,7 @@ from playwright_computer_use.async_api import (
     ScrollDirection,
     chunks,
     TYPING_GROUP_SIZE,
+    SCROLL_MULTIPLIER_FACTOR,
     to_playwright_key,
     load_cursor_image,
     _make_api_tool_result,
@@ -356,7 +357,7 @@ class PlaywrightComputerTool20250124(BasePlaywrightComputerTool):
                 x, y = coordinate
                 self.page.mouse.move(x, y)
                 self.mouse_position = (x, y)
-            scroll_amount *= 100
+            scroll_amount *= SCROLL_MULTIPLIER_FACTOR
             scroll_params = {
                 "up": {"delta_y": -scroll_amount, "delta_x": 0},
                 "down": {"delta_y": scroll_amount, "delta_x": 0},
